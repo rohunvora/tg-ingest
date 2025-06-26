@@ -127,12 +127,13 @@ def serialize_entities(entities):
     return result
 
 
-async def dump_messages(client: TelegramClient, chat, output_file: Path, min_id: Optional[int] = None, since: Optional[datetime] = None):
+async def dump_messages(client: TelegramClient, chat, output_file: Path, min_id: Optional[int] = None, since: Optional[datetime] = None, username_filter: Optional[str] = None):
     """Dump messages from a chat to JSONL file"""
     count = 0
     mode = 'a' if min_id else 'w'
     batch_count = 0
     reached_time_limit = False
+    filtered_count = 0
     
     with open(output_file, mode, encoding='utf-8') as f:
         # Set up iteration parameters
@@ -162,13 +163,22 @@ async def dump_messages(client: TelegramClient, chat, output_file: Path, min_id:
                 media_type = "doc"
                 media_file_id = str(message.document.id)
             
+            # Get sender username
+            sender_username = getattr(message.sender, 'username', None) if message.sender else None
+            
+            # Filter by username if specified
+            if username_filter:
+                if not sender_username or sender_username.lower() != username_filter.lower():
+                    filtered_count += 1
+                    continue
+            
             # Build message data
             data = {
                 "msg_id": message.id,
                 "chat_id": get_peer_id(message.peer_id),
                 "date": message.date.isoformat() + "Z",
                 "sender_id": message.sender_id,
-                "sender_username": getattr(message.sender, 'username', None) if message.sender else None,
+                "sender_username": sender_username,
                 "reply_to": message.reply_to.reply_to_msg_id if message.reply_to else None,
                 "text": message.text or "",
                 "entities": serialize_entities(message.entities),
@@ -189,6 +199,9 @@ async def dump_messages(client: TelegramClient, chat, output_file: Path, min_id:
         
         if reached_time_limit:
             click.echo(f"Reached time limit (messages before {since})", err=True)
+        
+        if username_filter and filtered_count > 0:
+            click.echo(f"Filtered out {filtered_count} messages from other users", err=True)
     
     return count
 
@@ -198,7 +211,8 @@ async def dump_messages(client: TelegramClient, chat, output_file: Path, min_id:
 @click.option('--out', required=True, type=click.Path(), help='Output JSONL file')
 @click.option('--since', type=click.DateTime(formats=['%Y-%m-%d']), help='Only export messages since this date')
 @click.option('--last', help='Only export messages from last N hours/days (e.g., "24h", "7d", "48h")')
-def dump(chat_url: str, out: str, since: Optional[datetime], last: Optional[str]):
+@click.option('--username', help='Only export messages from this username')
+def dump(chat_url: str, out: str, since: Optional[datetime], last: Optional[str], username: Optional[str]):
     """Dump all messages from a chat"""
     output_file = Path(out)
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -257,20 +271,22 @@ def dump(chat_url: str, out: str, since: Optional[datetime], last: Optional[str]
         
         # Export messages
         try:
-            count = await dump_messages(client, chat, output_file, min_id=last_msg_id, since=since)
+            count = await dump_messages(client, chat, output_file, min_id=last_msg_id, since=since, username_filter=username)
             
             # Report file size
             file_size = output_file.stat().st_size
             file_size_mb = file_size / 1024 / 1024
             
             click.echo(f"\nExported {count} messages")
+            if username:
+                click.echo(f"Filtered to messages from: {username}")
             click.echo(f"File size: {file_size_mb:.2f} MB")
             
         except FloodWaitError as e:
             click.echo(f"Rate limited. Waiting {e.seconds} seconds...", err=True)
             await asyncio.sleep(e.seconds)
             # Retry
-            count = await dump_messages(client, chat, output_file, min_id=last_msg_id, since=since)
+            count = await dump_messages(client, chat, output_file, min_id=last_msg_id, since=since, username_filter=username)
         
         await client.disconnect()
     
@@ -281,7 +297,8 @@ def dump(chat_url: str, out: str, since: Optional[datetime], last: Optional[str]
 @click.option('--chat-url', required=True, help='Telegram chat URL')
 @click.option('--hours', type=int, default=1, help='Export last N hours (default: 1)')
 @click.option('--clean/--raw', default=True, help='Output clean text format (default: True)')
-def quick(chat_url: str, hours: int, clean: bool):
+@click.option('--username', help='Only export messages from this username')
+def quick(chat_url: str, hours: int, clean: bool, username: Optional[str]):
     """Quick export for last N hours - perfect for LLM analysis"""
     from .clean_export import convert_to_clean_format
     
@@ -298,7 +315,7 @@ def quick(chat_url: str, hours: int, clean: bool):
     
     # Run the export
     ctx = click.Context(dump)
-    ctx.invoke(dump, chat_url=chat_url, out=str(temp_file), since=since, last=None)
+    ctx.invoke(dump, chat_url=chat_url, out=str(temp_file), since=since, last=None, username=username)
     
     if clean and temp_file.exists():
         # Clean the export

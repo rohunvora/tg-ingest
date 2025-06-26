@@ -34,7 +34,7 @@ export_status = {
 # Cache for recent exports
 recent_exports = []
 
-async def quick_export(chat_url: str, hours: int, clean: bool = True):
+async def quick_export(chat_url: str, hours: int, clean: bool = True, username_filter: str = None):
     """Export messages from the last N hours"""
     global export_status
     
@@ -79,6 +79,14 @@ async def quick_export(chat_url: str, hours: int, clean: bool = True):
             if not message.text:
                 continue
             
+            # Get sender username
+            sender_username = getattr(message.sender, 'username', None) if message.sender else None
+            
+            # Filter by username if specified
+            if username_filter:
+                if not sender_username or sender_username.lower() != username_filter.lower():
+                    continue
+            
             # Build message data
             media_type = None
             if message.photo:
@@ -93,7 +101,7 @@ async def quick_export(chat_url: str, hours: int, clean: bool = True):
                 "chat_id": get_peer_id(message.peer_id),
                 "date": message.date.isoformat() + "Z",
                 "sender_id": message.sender_id,
-                "sender_username": getattr(message.sender, 'username', None) if message.sender else None,
+                "sender_username": sender_username,
                 "reply_to": message.reply_to.reply_to_msg_id if message.reply_to else None,
                 "text": message.text or "",
                 "entities": serialize_entities(message.entities),
@@ -134,7 +142,7 @@ async def quick_export(chat_url: str, hours: int, clean: bool = True):
         await client.disconnect()
 
 
-def run_export_async(chat_url: str, hours: int, clean: bool):
+def run_export_async(chat_url: str, hours: int, clean: bool, username: str = None):
     """Run export in background thread"""
     global export_status
     
@@ -151,7 +159,7 @@ def run_export_async(chat_url: str, hours: int, clean: bool):
     asyncio.set_event_loop(loop)
     
     try:
-        file_path = loop.run_until_complete(quick_export(chat_url, hours, clean))
+        file_path = loop.run_until_complete(quick_export(chat_url, hours, clean, username))
         if file_path:
             export_status['file_path'] = str(file_path)
             export_status['running'] = False
@@ -189,6 +197,7 @@ def start_export():
     chat_url = data.get('chat_url')
     hours = int(data.get('hours', 1))
     clean = data.get('clean', True)
+    username = data.get('username', None)
     
     if not chat_url:
         return jsonify({'error': 'Chat URL required'}), 400
@@ -196,7 +205,7 @@ def start_export():
     # Start export in background
     thread = threading.Thread(
         target=run_export_async,
-        args=(chat_url, hours, clean)
+        args=(chat_url, hours, clean, username)
     )
     thread.start()
     

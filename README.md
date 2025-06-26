@@ -79,6 +79,9 @@ Opens a simple local web interface to:
 
 # Or specify hours
 ./run.sh quick
+
+# Filter by username
+./run.sh quick --chat-url "https://t.me/c/123456789/12345" --hours 6 --username YOUR_USERNAME
 ```
 
 **Option C: Direct to AI** (Copy to clipboard)
@@ -92,7 +95,14 @@ Opens a simple local web interface to:
 ### 3. Full Export (for archival)
 
 ```bash
+# Export all messages
 poetry run tg_export dump --chat-url "https://t.me/c/123456789" --out my_archive.jsonl
+
+# Export only your messages
+poetry run tg_export dump --chat-url "https://t.me/c/123456789" --out my_messages.jsonl --username YOUR_USERNAME
+
+# Export last 24 hours from specific user
+poetry run tg_export dump --chat-url "https://t.me/c/123456789" --out filtered.jsonl --last 24h --username THEIR_USERNAME
 ```
 
 ## Output Format

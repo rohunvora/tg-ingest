@@ -158,6 +158,11 @@
             <input type="number" id="customHours" placeholder="Or enter custom hours" style="margin-top: 10px;">
         </div>
         
+        <div class="form-group">
+            <label>Filter by Username (optional)</label>
+            <input type="text" id="username" placeholder="Enter username to filter messages">
+        </div>
+        
         <div class="checkbox-group">
             <input type="checkbox" id="cleanExport" checked>
             <label for="cleanExport">Clean export (remove bots & format for LLM)</label>
@@ -200,6 +205,7 @@
             const customHours = document.getElementById('customHours').value;
             const hours = customHours || selectedHours || 1;
             const clean = document.getElementById('cleanExport').checked;
+            const username = document.getElementById('username').value.trim();
             
             if (!chatUrl) {
                 showStatus('Please enter a chat URL', 'error');
@@ -210,10 +216,15 @@
             exportBtn.disabled = true;
             showStatus('Starting export...', 'info');
             
+            const requestData = {chat_url: chatUrl, hours: hours, clean: clean};
+            if (username) {
+                requestData.username = username;
+            }
+            
             fetch('/export', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({chat_url: chatUrl, hours: hours, clean: clean})
+                body: JSON.stringify(requestData)
             })
             .then(response => response.json())
             .then(data => {
