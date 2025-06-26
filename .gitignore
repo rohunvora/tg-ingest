@@ -1,0 +1,49 @@
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Poetry
+poetry.lock
+dist/
+build/
+*.egg-info/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environment variables
+.env
+
+# Telegram session
+.session
+
+# Output files
+*.jsonl
+*.txt
+dumps/
+exports/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# macOS
+.DS_Store

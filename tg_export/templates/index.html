@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Telegram Quick Export</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: 500;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .presets {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .preset {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            background: #f8f9fa;
+        }
+        .preset:hover {
+            background: #e9ecef;
+        }
+        .preset.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .recent-exports {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .recent-item {
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .download-link {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-top: 15px;
+        }
+        .checkbox-group input {
+            width: auto;
+            margin-right: 10px;
+        }
+        .instructions {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Telegram Quick Export</h1>
+        
+        <div class="instructions">
+            <strong>Tip:</strong> Get chat URL by copying any message link from the group
+        </div>
+        
+        <div class="form-group">
+            <label>Chat URL</label>
+            <input type="text" id="chatUrl" placeholder="https://t.me/c/123456789/12345">
+        </div>
+        
+        <div class="form-group">
+            <label>Time Range</label>
+            <div class="presets">
+                <div class="preset" data-hours="1">1 hour</div>
+                <div class="preset" data-hours="6">6 hours</div>
+                <div class="preset" data-hours="24">24 hours</div>
+                <div class="preset" data-hours="48">2 days</div>
+            </div>
+            <input type="number" id="customHours" placeholder="Or enter custom hours" style="margin-top: 10px;">
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="cleanExport" checked>
+            <label for="cleanExport">Clean export (remove bots & format for LLM)</label>
+        </div>
+        
+        <button id="exportBtn" onclick="startExport()">Export Messages</button>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="recent-exports" id="recentExports" style="display: none;">
+            <h3>Recent Exports</h3>
+            <div id="recentList"></div>
+        </div>
+    </div>
+    
+    <script>
+        let selectedHours = null;
+        
+        // Preset buttons
+        document.querySelectorAll('.preset').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.preset').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                selectedHours = parseInt(this.dataset.hours);
+                document.getElementById('customHours').value = '';
+            });
+        });
+        
+        // Custom hours input
+        document.getElementById('customHours').addEventListener('input', function() {
+            document.querySelectorAll('.preset').forEach(b => b.classList.remove('active'));
+            selectedHours = parseInt(this.value) || null;
+        });
+        
+        // Load recent exports
+        loadRecent();
+        
+        function startExport() {
+            const chatUrl = document.getElementById('chatUrl').value;
+            const customHours = document.getElementById('customHours').value;
+            const hours = customHours || selectedHours || 1;
+            const clean = document.getElementById('cleanExport').checked;
+            
+            if (!chatUrl) {
+                showStatus('Please enter a chat URL', 'error');
+                return;
+            }
+            
+            const exportBtn = document.getElementById('exportBtn');
+            exportBtn.disabled = true;
+            showStatus('Starting export...', 'info');
+            
+            fetch('/export', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({chat_url: chatUrl, hours: hours, clean: clean})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showStatus(data.error, 'error');
+                    exportBtn.disabled = false;
+                } else {
+                    checkStatus();
+                }
+            })
+            .catch(error => {
+                showStatus('Error: ' + error, 'error');
+                exportBtn.disabled = false;
+            });
+        }
+        
+        function checkStatus() {
+            fetch('/status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showStatus('Error: ' + data.error, 'error');
+                    document.getElementById('exportBtn').disabled = false;
+                } else if (data.running) {
+                    showStatus(data.message + ' (' + data.progress + ' messages)', 'info');
+                    setTimeout(checkStatus, 1000);
+                } else if (data.file_path) {
+                    const filename = data.file_path.split('/').pop();
+                    showStatus(
+                        data.message + '<br><br>' +
+                        '<a href="/download/' + filename + '" class="download-link">📥 Download Export</a>',
+                        'success'
+                    );
+                    document.getElementById('exportBtn').disabled = false;
+                    loadRecent();
+                }
+            });
+        }
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.className = 'status ' + type;
+            status.innerHTML = message;
+            status.style.display = 'block';
+        }
+        
+        function loadRecent() {
+            fetch('/recent')
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    document.getElementById('recentExports').style.display = 'block';
+                    const list = document.getElementById('recentList');
+                    list.innerHTML = data.map(item => `
+                        <div class="recent-item">
+                            <div>
+                                <strong>${item.hours}h export</strong><br>
+                                <small>${item.timestamp} • ${(item.size / 1024).toFixed(1)} KB</small>
+                            </div>
+                            <a href="/download/${item.file.split('/').pop()}" class="download-link">Download</a>
+                        </div>
+                    `).join('');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "tg-ingest"
+version = "0.1.0"
+description = "Telegram Group-Chat Exporter"
+authors = ["rohunvora <emailrohun@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+telethon = "^1.40.0"
+click = "^8.2.1"
+python-dotenv = "^1.1.1"
+flask = "^3.0.0"
+
+[tool.poetry.scripts]
+tg_export = "tg_export.cli:cli"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+mypy = "^1.16.1"
+ruff = "^0.12.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
