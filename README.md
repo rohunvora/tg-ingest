@@ -61,7 +61,7 @@ TELEGRAM_API_HASH=your_api_hash
 
 This logs into YOUR Telegram account. You'll receive a code in your Telegram app.
 
-### 2. Quick Export (NEW! 🚀)
+### 2. Quick Export (NEW! 🚀) - Outputs LLM-Friendly TXT Format
 
 **Option A: Web UI** (Easiest)
 ```bash
@@ -69,7 +69,7 @@ This logs into YOUR Telegram account. You'll receive a code in your Telegram app
 ```
 Opens a simple local web interface to:
 - Export last 1h, 6h, 24h or custom time
-- Auto-clean for AI analysis
+- Auto-clean for AI analysis (TXT format)
 - Download history
 
 **Option B: Command Line** (Fastest)
@@ -105,15 +105,35 @@ poetry run tg_export dump --chat-url "https://t.me/c/123456789" --out my_message
 poetry run tg_export dump --chat-url "https://t.me/c/123456789" --out filtered.jsonl --last 24h --username THEIR_USERNAME
 ```
 
-## Output Format
+## Output Formats
 
-Messages are saved in clean, AI-ready format:
+### TXT Format (Recommended for LLMs) ✨
+
+The TXT format is **MUCH more LLM-friendly** because it:
+- Uses natural conversation format that LLMs understand better
+- Removes JSON syntax overhead, saving tokens
+- Pre-filters bot messages and spam
+- Maintains conversation flow with reply context
+
+Example:
 ```
 [2025-06-26 14:32] username: message text
 [2025-06-26 14:33] another_user (replying to #123): reply text
 ```
 
-Bot messages and spam are automatically filtered out.
+### JSONL Format (Raw Export)
+
+The JSONL format contains all metadata but is less optimal for LLMs:
+- More tokens due to JSON structure
+- Includes technical fields LLMs don't need
+- Requires preprocessing for best results
+
+Example:
+```json
+{"msg_id": 123, "sender_username": "username", "text": "message text", ...}
+```
+
+**For AI analysis, always use the TXT format** - it's cleaner, cheaper, and produces better results!
 
 ## 🛡️ Privacy & Security Features
 

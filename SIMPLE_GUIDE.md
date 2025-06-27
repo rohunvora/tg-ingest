@@ -51,10 +51,20 @@ When asked for the chat URL:
 
 ## What You Get
 
-A file in the `exports` folder that contains all messages in JSON format. You can:
-- Upload it to Claude or ChatGPT for analysis
-- Ask questions like "What are the main topics discussed?"
-- Get summaries, find patterns, extract insights
+Two file formats in the `exports` folder:
+
+**TXT Format (Recommended for AI)** - Clean, human-readable format:
+- Best for uploading to Claude or ChatGPT
+- Uses fewer tokens, costs less
+- Easier for AI to understand
+- Pre-filtered to remove spam
+
+**JSONL Format** - Raw data with all metadata:
+- Contains all technical details
+- Larger file size
+- Better for archival purposes
+
+For AI analysis, always use the TXT file!
 
 ## Important Notes
 
